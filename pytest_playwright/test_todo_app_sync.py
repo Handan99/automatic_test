@@ -4,24 +4,27 @@ from playwright.sync_api import sync_playwright
 # todo_app项目链接：https://github.com/themaxsandelin/todo?tab=readme-ov-file
 
 # 将打开浏览器的操作封装成固件函数
-@pytest.fixture
-def browser_context():
+# 浏览器实例（会话级）
+@pytest.fixture(scope="session")
+def browser():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, slow_mo=100)
-        # 此处生成模拟浏览器上下文
-        context = browser.new_context()
-        try:
-            yield context
-        finally:
-            context.close()
-            browser.close()
-@pytest.fixture#
-def page(browser_context):
-    page = browser_context.new_page()
-    try:
-        yield page
-    finally:
-        page.close()
+        yield browser
+        browser.close()
+
+# 上下文隔离（函数级）
+@pytest.fixture(scope="function")
+def context(browser):
+    context = browser.new_context()
+    yield context
+    context.close()
+
+# 页面对象（函数级）
+@pytest.fixture(scope="function")
+def page(context):
+    page = context.new_page()
+    yield page
+    page.close()
 
 # 添加待办事项
 ## 测试用例一：连续添加两个待办事项
@@ -221,6 +224,3 @@ def test_complete_task_2(page):
     # 判断已完成事项个数
     assert page.locator("#completed").locator("li").count() == 0
 
-###########################################################
-# 待改进1：都是原子能力最好封装成一个函数调用
-# 待改进2：写成异步等待函数
